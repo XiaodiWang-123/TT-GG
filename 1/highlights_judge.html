@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Highlights Judge</title>
+<style>
+body { font-family: Arial; background:#f5f5f5; padding:20px; }
+.box { max-width:850px; margin:auto; background:white; padding:20px; border-radius:12px; }
+label { display:block; margin-top:12px; font-weight:bold; }
+select, input { width:100%; padding:8px; margin-top:5px; }
+button { margin-top:18px; width:100%; padding:12px; background:black; color:white; border:0; border-radius:8px; }
+#out { margin-top:20px; background:#111; color:#0f0; padding:15px; white-space:pre-wrap; }
+</style>
+</head>
+
+<body>
+<div class="box">
+
+<h2>Highlights Judge</h2>
+
+<label>Category</label>
+<select id="category">
+<option>Dining</option>
+<option>Hotel</option>
+<option>Travel / Leisure</option>
+<option>Beauty</option>
+<option>Other</option>
+</select>
+
+<label>TT has Highlights module?</label>
+<select id="ttHas">
+<option value="yes">Yes</option>
+<option value="no">No</option>
+</select>
+
+<label>GG has comparable highlights / summary / review summary / know before you go?</label>
+<select id="ggHas">
+<option value="yes">Yes</option>
+<option value="no">No</option>
+</select>
+
+<label>TT Highlights quality</label>
+<select id="ttQuality">
+<option value="good">Good quality</option>
+<option value="bad">Bad quality</option>
+<option value="irrelevant">Irrelevant content</option>
+<option value="non_actionable">Non-actionable Highlights</option>
+</select>
+
+<label>GG comparable highlight quality</label>
+<select id="ggQuality">
+<option value="good">Good quality</option>
+<option value="bad">Bad quality</option>
+<option value="irrelevant">Irrelevant content</option>
+<option value="non_actionable">Non-actionable Highlights</option>
+</select>
+
+<button onclick="run()">Generate Result</button>
+
+<div id="out"></div>
+
+</div>
+
+<script>
+function v(id){ return document.getElementById(id).value; }
+
+function addIssue(arr, issue){
+  if(!arr.includes(issue)) arr.push(issue);
+}
+
+function bad(q){
+  return q === "bad" || q === "irrelevant" || q === "non_actionable";
+}
+
+function goodExample(cat){
+  if(cat === "Dining") return "specific dining information such as popular dishes, happy hour, brunch, or vegan options";
+  if(cat === "Hotel") return "specific hotel information such as ocean view rooms, airport shuttle, pet-friendly policy, or rooftop bar";
+  if(cat === "Travel / Leisure") return "practical travel tips such as free admission, best photo spots, parking, or family-friendly activities";
+  if(cat === "Beauty") return "specific service information such as hair specialties, organic products, or award-winning services";
+  return "specific and practical information that helps users understand the POI";
+}
+
+function run(){
+
+let cat = v("category");
+let ttHas = v("ttHas");
+let ggHas = v("ggHas");
+let ttQ = v("ttQuality");
+let ggQ = v("ggQuality");
+
+let score = 0;
+let equal = "";
+let issues = [];
+let remarks = "";
+
+// ===== Module availability =====
+if(ttHas === "no" && ggHas === "yes"){
+  score = -2;
+  addIssue(issues, "No Highlights module");
+}
+else if(ttHas === "yes" && ggHas === "no"){
+  score = 2;
+  addIssue(issues, "No Highlights module");
+}
+else if(ttHas === "no" && ggHas === "no"){
+  score = 0;
+  equal = "Equally bad";
+  addIssue(issues, "No Highlights module");
+}
+
+// ===== Quality comparison =====
+if(ttHas === "yes" && ggHas === "yes"){
+  if(bad(ttQ) && !bad(ggQ)){
+    score -= 1;
+    if(ttQ === "bad") addIssue(issues, "Bad quality");
+    if(ttQ === "irrelevant") addIssue(issues, "Irrelevant content");
+    if(ttQ === "non_actionable") addIssue(issues, "Non-actionable Highlights");
+  }
+
+  if(!bad(ttQ) && bad(ggQ)){
+    score += 1;
+    if(ggQ === "bad") addIssue(issues, "Bad quality");
+    if(ggQ === "irrelevant") addIssue(issues, "Irrelevant content");
+    if(ggQ === "non_actionable") addIssue(issues, "Non-actionable Highlights");
+  }
+
+  if(bad(ttQ) && bad(ggQ)){
+    score = 0;
+    equal = "Equally bad";
+    if(ttQ === "bad" || ggQ === "bad") addIssue(issues, "Bad quality");
+    if(ttQ === "irrelevant" || ggQ === "irrelevant") addIssue(issues, "Irrelevant content");
+    if(ttQ === "non_actionable" || ggQ === "non_actionable") addIssue(issues, "Non-actionable Highlights");
+  }
+
+  if(!bad(ttQ) && !bad(ggQ)){
+    score = 0;
+    equal = "Equally good";
+  }
+}
+
+// clamp
+if(score > 2) score = 2;
+if(score < -2) score = -2;
+
+// equal if still empty
+if(score === 0 && equal === ""){
+  equal = issues.length > 0 ? "Equally bad" : "Equally good";
+}
+
+// ===== Remarks =====
+if(score === -2){
+  remarks = "TT does not have highlights available while GG has comparable highlight information such as summary, review summary, or know-before-you-go information. Therefore, TT is significantly worse.";
+}
+else if(score === 2){
+  remarks = "TT has highlights available while GG does not provide comparable highlight information. Therefore, TT is significantly better than GG.";
+}
+else if(score === 0 && equal === "Equally good"){
+  remarks = `Both TT and GG provide useful highlight information. The highlights are specific, relevant, and actionable for this POI, such as ${goodExample(cat)}. Therefore, both are equally good.`;
+}
+else if(score === 0 && equal === "Equally bad"){
+  remarks = "Both TT and GG have weak highlight information. The highlights are missing, low quality, irrelevant, or not actionable enough to help users make a decision. Therefore, both are equally bad.";
+}
+else if(score < 0){
+  remarks = "TT provides weaker highlights than GG. ";
+
+  if(ttQ === "bad"){
+    remarks += "TT's highlights have bad quality, such as misspelled keywords, confusing summaries, or unclear video clips. ";
+  }
+  if(ttQ === "irrelevant"){
+    remarks += "TT's highlights include content that is not relevant to the POI. ";
+  }
+  if(ttQ === "non_actionable"){
+    remarks += `TT's highlights are too vague and do not provide practical value. Good highlights for this category should include ${goodExample(cat)}. `;
+  }
+
+  remarks += "Therefore, TT is worse than GG.";
+}
+else if(score > 0){
+  remarks = "TT provides stronger highlights than GG. ";
+
+  if(ggQ === "bad"){
+    remarks += "GG's comparable highlight information has bad quality, such as confusing summaries or unclear content. ";
+  }
+  if(ggQ === "irrelevant"){
+    remarks += "GG's comparable highlight information includes content that is not relevant to the POI. ";
+  }
+  if(ggQ === "non_actionable"){
+    remarks += `GG's comparable highlight information is too vague and does not provide practical value. Good highlights for this category should include ${goodExample(cat)}. `;
+  }
+
+  remarks += "Therefore, TT is better than GG.";
+}
+
+document.getElementById("out").textContent =
+`Highlights: ${score}
+
+Equally good / Equally bad: ${equal}
+
+Issue classification: ${issues.join("; ")}
+
+Remarks:
+${remarks}`;
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Static Images Judge</title>
+
+<style>
+body { font-family: Arial; background:#f5f5f5; padding:20px; }
+.box { max-width:850px; margin:auto; background:white; padding:20px; border-radius:12px; }
+label { display:block; margin-top:12px; font-weight:bold; }
+input, select { width:100%; padding:8px; margin-top:5px; }
+button { margin-top:18px; width:100%; padding:12px; background:black; color:white; border:0; border-radius:8px; }
+#out { margin-top:20px; background:#111; color:#0f0; padding:15px; white-space:pre-wrap; }
+</style>
+</head>
+
+<body>
+<div class="box">
+
+<h2>Static Images Judge</h2>
+
+<label>Category</label>
+<select id="category">
+<option>Dining</option>
+<option>Hotel</option>
+<option>Travel / Leisure</option>
+<option>Beauty</option>
+<option>Other</option>
+</select>
+
+<label>TT number of album images</label>
+<input id="ttNum" placeholder="Example: 1">
+
+<label>GG number of album images</label>
+<input id="ggNum" placeholder="Example: 10">
+
+<label>TT has images?</label>
+<select id="ttHas">
+<option value="yes">Yes</option>
+<option value="no">No</option>
+</select>
+
+<label>GG has images?</label>
+<select id="ggHas">
+<option value="yes">Yes</option>
+<option value="no">No</option>
+</select>
+
+<label>TT cover image quality</label>
+<select id="ttCoverQuality">
+<option value="good">Good</option>
+<option value="poor">Poor / blurry / dark / cropped</option>
+</select>
+
+<label>GG cover image quality</label>
+<select id="ggCoverQuality">
+<option value="good">Good</option>
+<option value="poor">Poor / blurry / dark / cropped</option>
+</select>
+
+<label>TT cover image relevant?</label>
+<select id="ttCoverRelevant">
+<option value="yes">Yes</option>
+<option value="no">No</option>
+</select>
+
+<label>GG cover image relevant?</label>
+<select id="ggCoverRelevant">
+<option value="yes">Yes</option>
+<option value="no">No</option>
+</select>
+
+<label>TT album richness</label>
+<select id="ttRich">
+<option value="rich">Rich / shows different useful views</option>
+<option value="mono">Monotonous / not enough variety</option>
+</select>
+
+<label>GG album richness</label>
+<select id="ggRich">
+<option value="rich">Rich / shows different useful views</option>
+<option value="mono">Monotonous / not enough variety</option>
+</select>
+
+<button onclick="run()">Generate Result</button>
+
+<div id="out"></div>
+
+</div>
+
+<script>
+function v(id){ return document.getElementById(id).value; }
+function n(id){ return parseInt(document.getElementById(id).value) || 0; }
+
+function addIssue(arr, issue){
+  if(!arr.includes(issue)) arr.push(issue);
+}
+
+function categoryGoodExample(cat){
+  if(cat === "Dining") return "storefront signage, brand logo, food, or interior";
+  if(cat === "Hotel") return "hotel building, signage, lobby, room, or hotel logo";
+  if(cat === "Travel / Leisure") return "brand logo, activity, attraction, or things to see and do";
+  if(cat === "Beauty") return "storefront signage or services provided";
+  return "clear and relevant images of the POI";
+}
+
+function run(){
+
+let cat = v("category");
+
+let ttNum = n("ttNum");
+let ggNum = n("ggNum");
+
+let ttHas = v("ttHas");
+let ggHas = v("ggHas");
+
+let ttCoverQuality = v("ttCoverQuality");
+let ggCoverQuality = v("ggCoverQuality");
+
+let ttCoverRelevant = v("ttCoverRelevant");
+let ggCoverRelevant = v("ggCoverRelevant");
+
+let ttRich = v("ttRich");
+let ggRich = v("ggRich");
+
+let score = 0;
+let equal = "";
+let issues = [];
+let remarks = "";
+
+// no image
+if(ttHas === "no" && ggHas === "yes"){
+  score -= 2;
+  addIssue(issues, "POI without image");
+}
+else if(ttHas === "yes" && ggHas === "no"){
+  score += 2;
+  addIssue(issues, "POI without image");
+}
+else if(ttHas === "no" && ggHas === "no"){
+  score = 0;
+  equal = "Equally bad";
+  addIssue(issues, "POI without image");
+}
+
+// cover quality
+if(ttHas === "yes" && ggHas === "yes"){
+  if(ttCoverQuality === "poor" && ggCoverQuality === "good"){
+    score -= 1;
+    addIssue(issues, "Cover image quality is poor");
+  }
+  if(ttCoverQuality === "good" && ggCoverQuality === "poor"){
+    score += 1;
+    addIssue(issues, "Google Cover Image quality is poor");
+  }
+
+  if(ttCoverRelevant === "no" && ggCoverRelevant === "yes"){
+    score -= 1;
+    addIssue(issues, "Cover image is irrelevant");
+  }
+  if(ttCoverRelevant === "yes" && ggCoverRelevant === "no"){
+    score += 1;
+    addIssue(issues, "Cover image is irrelevant");
+  }
+
+  if(ttNum < 5 && ggNum >= 5){
+    score -= 1;
+    addIssue(issues, "Insufficient number of album images");
+  }
+  if(ggNum < 5 && ttNum >= 5){
+    score += 1;
+    addIssue(issues, "Insufficient number of album images");
+  }
+
+  if(ttRich === "mono" && ggRich === "rich"){
+    score -= 1;
+    addIssue(issues, "Insufficient album richness");
+  }
+  if(ttRich === "rich" && ggRich === "mono"){
+    score += 1;
+    addIssue(issues, "Insufficient album richness");
+  }
+}
+
+// clamp
+if(score > 2) score = 2;
+if(score < -2) score = -2;
+
+// equal field
+if(score === 0 && equal === ""){
+  if(
+    ttHas === "yes" && ggHas === "yes" &&
+    ttCoverQuality === "good" && ggCoverQuality === "good" &&
+    ttCoverRelevant === "yes" && ggCoverRelevant === "yes" &&
+    ttNum >= 5 && ggNum >= 5 &&
+    ttRich === "rich" && ggRich === "rich"
+  ){
+    equal = "Equally good";
+  } else {
+    equal = "Equally bad";
+    if(issues.length === 0) addIssue(issues, "Insufficient album richness");
+  }
+}
+
+// remarks
+if(score === 0 && equal === "Equally good"){
+  remarks = `Both TT and GG provide enough static images with clear and relevant cover images. The albums show useful POI visuals such as ${categoryGoodExample(cat)}. Therefore, both are equally good.`;
+}
+
+else if(score === 0 && equal === "Equally bad"){
+  remarks = `Both TT and GG have weak static image signals. The image quantity, quality, relevance, or album richness does not provide enough useful visual information for users. Therefore, both are equally bad.`;
+}
+
+else {
+  remarks = `TT has ${ttNum} image(s), while GG has ${ggNum} image(s). `;
+
+  if(score < 0){
+    if(ttHas === "no" && ggHas === "yes"){
+      remarks += "TT does not provide any image while GG has images, so TT is missing visual information entirely. ";
+    }
+    if(ttCoverQuality === "poor" && ggCoverQuality === "good"){
+      remarks += "TT's cover image quality is poor because it is blurry, dark, poorly cropped, or hard to understand. ";
+    }
+    if(ttCoverRelevant === "no" && ggCoverRelevant === "yes"){
+      remarks += `TT's cover image is not relevant to the POI. For this category, useful images should show ${categoryGoodExample(cat)}. `;
+    }
+    if(ttNum < 5 && ggNum >= 5){
+      remarks += "TT has fewer than 5 album images, which is not a sufficient amount of photos. ";
+    }
+    if(ttRich === "mono" && ggRich === "rich"){
+      remarks += "TT's album is not rich enough because it does not cover a full range of useful picture content. ";
+    }
+
+    remarks += score === -2 ? "Therefore, TT is significantly worse than GG." : "Therefore, TT is worse than GG.";
+  }
+
+  if(score > 0){
+    if(ggHas === "no" && ttHas === "yes"){
+      remarks += "GG does not provide any image while TT has images, so GG is missing visual information entirely. ";
+    }
+    if(ggCoverQuality === "poor" && ttCoverQuality === "good"){
+      remarks += "GG's cover image quality is poor because it is blurry, dark, poorly cropped, or hard to understand. ";
+    }
+    if(ggCoverRelevant === "no" && ttCoverRelevant === "yes"){
+      remarks += `GG's cover image is not relevant to the POI. For this category, useful images should show ${categoryGoodExample(cat)}. `;
+    }
+    if(ggNum < 5 && ttNum >= 5){
+      remarks += "GG has fewer than 5 album images, which is not a sufficient amount of photos. ";
+    }
+    if(ggRich === "mono" && ttRich === "rich"){
+      remarks += "GG's album is not rich enough because it does not cover a full range of useful picture content. ";
+    }
+
+    remarks += score === 2 ? "Therefore, TT is significantly better than GG." : "Therefore, TT is better than GG.";
+  }
+}
+
+document.getElementById("out").textContent =
+`Static images: ${score}
+
+Equally good / Equally bad: ${equal}
+
+Issue classification: ${issues.join("; ")}
+
+Remarks:
+${remarks}`;
+}
+</script>
+
+</body>
+</html>

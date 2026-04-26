@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>First Screen Judge (Multi Issue)</title>
+
+<style>
+body { font-family: Arial; padding:20px; background:#f5f5f5;}
+.box { background:white; padding:20px; border-radius:10px; max-width:900px; margin:auto;}
+label { display:block; margin-top:12px; font-weight:bold;}
+input, select { width:100%; padding:8px; margin-top:5px;}
+button { margin-top:15px; padding:12px; width:100%; background:black; color:white; border:none;}
+#out { margin-top:20px; background:#111; color:#0f0; padding:15px; white-space:pre-wrap;}
+</style>
+
+</head>
+
+<body>
+
+<div class="box">
+
+<h2>First Screen（支持多问题）</h2>
+
+<label>TT review 数量</label>
+<input id="ttReview">
+
+<label>GG review 数量</label>
+<input id="ggReview">
+
+<label>TT 有 star rating 吗</label>
+<select id="ttRating"><option>yes</option><option>no</option></select>
+
+<label>GG 有 star rating 吗</label>
+<select id="ggRating"><option>yes</option><option>no</option></select>
+
+<label>TT 是否缺少 opening hours / category / 地址</label>
+<select id="ttCore"><option>no</option><option>yes</option></select>
+
+<label>TT 是否缺少 menu / wait time / useful feature</label>
+<select id="ttInfo"><option>no</option><option>yes</option></select>
+
+<label>TT 图片是否无关 / 模糊 / logo</label>
+<select id="ttImg"><option>no</option><option>yes</option></select>
+
+<button onclick="run()">生成结果</button>
+
+<div id="out"></div>
+
+</div>
+
+<script>
+
+function addIssue(arr, item){
+  if(!arr.includes(item)){
+    arr.push(item)
+  }
+}
+
+function run(){
+
+let ttR = parseInt(document.getElementById("ttReview").value||0)
+let ggR = parseInt(document.getElementById("ggReview").value||0)
+
+let ttRating = document.getElementById("ttRating").value
+let ggRating = document.getElementById("ggRating").value
+
+let ttCore = document.getElementById("ttCore").value
+let ttInfo = document.getElementById("ttInfo").value
+let ttImg = document.getElementById("ttImg").value
+
+let amount = 0
+let quality = 0
+let relevance = 0
+let issues = []
+let missing = []
+
+// ===== Amount =====
+if(ggR > ttR * 5){
+  amount = -1
+  addIssue(issues, "Missing trust signals")
+  missing.push("review count")
+}
+
+// ===== Quality =====
+if(ttRating==="no" && ggRating==="yes"){
+  quality = -1
+  addIssue(issues, "Missing trust signals")
+  missing.push("star rating")
+}
+
+if(ttInfo==="yes"){
+  quality = -1
+}
+
+// ===== Relevance =====
+if(ttImg==="yes"){
+  relevance = -1
+  addIssue(issues, "Uninformative visuals")
+  missing.push("irrelevant image")
+}
+
+// ===== Core info =====
+if(ttCore==="yes"){
+  addIssue(issues, "Missing core information")
+  missing.push("opening hours / category / location")
+}
+
+// ===== Overall =====
+let total = amount + quality + relevance
+let overall = 0
+if(total < 0) overall = -1
+
+// ===== Reason =====
+let reason = "Based on the first screen, both TT and GG provide basic information about the place. "
+
+if(amount !== 0){
+reason += `However, TT has significantly fewer reviews compared to GG (${ttR} vs ${ggR}), which reduces trust and limits information depth (amount -1). `
+}
+
+if(quality !== 0){
+reason += "GG provides more useful and actionable information such as menu, wait time or additional features, making the information more helpful (quality -1). "
+}
+
+if(relevance !== 0){
+reason += "TT displays visuals that are not relevant to the place, which reduces content relevance (relevance -1). "
+}
+else{
+reason += "Both platforms display relevant content (relevance 0). "
+}
+
+// 多个 issue 输出
+if(issues.length > 0){
+reason += `TT also has the following issues: ${issues.join(", ")} (${missing.join(", ")}). `
+}
+
+if(overall === -1){
+reason += "Therefore, TT is slightly worse than GG."
+}
+else{
+reason += "Therefore, TT and GG are similar."
+}
+
+// ===== OUTPUT =====
+let out = `
+Amount of information: ${amount}
+Quality of information: ${quality}
+Relevance of information: ${relevance}
+First screen efficiency GSB: ${overall}
+
+Issue classification: ${issues.join("; ")}
+
+Reason:
+${reason}
+`
+
+document.getElementById("out").textContent = out
+
+}
+
+</script>
+
+</body>
+</html>

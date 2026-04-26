@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Posts Judge</title>
+
+<style>
+body { font-family: Arial; background:#f5f5f5; padding:20px; }
+.box { max-width:850px; margin:auto; background:white; padding:20px; border-radius:12px; }
+label { display:block; margin-top:12px; font-weight:bold; }
+input, select { width:100%; padding:8px; margin-top:5px; }
+button { margin-top:18px; width:100%; padding:12px; background:black; color:white; border:0; border-radius:8px; }
+#out { margin-top:20px; background:#111; color:#0f0; padding:15px; white-space:pre-wrap; }
+</style>
+</head>
+
+<body>
+<div class="box">
+
+<h2>Posts Judge</h2>
+
+<label>TT number of posts</label>
+<input id="ttPosts" placeholder="Example: 200">
+
+<label>GG number of posts</label>
+<input id="ggPosts" placeholder="Example: 2">
+
+<label>TT posts quality</label>
+<select id="ttQuality">
+<option value="good">Good quality posts</option>
+<option value="bad_quality">Bad quality posts</option>
+<option value="bad_content">Bad content posts</option>
+<option value="insufficient">Insufficient posts</option>
+</select>
+
+<label>GG posts quality</label>
+<select id="ggQuality">
+<option value="good">Good quality posts</option>
+<option value="bad_quality">Bad quality posts</option>
+<option value="bad_content">Bad content posts</option>
+<option value="insufficient">Insufficient posts</option>
+</select>
+
+<button onclick="run()">Generate Result</button>
+
+<div id="out"></div>
+
+</div>
+
+<script>
+function v(id){ return document.getElementById(id).value; }
+function n(id){ return parseInt(v(id)) || 0; }
+
+function addIssue(arr, issue){
+  if(!arr.includes(issue)) arr.push(issue);
+}
+
+function qualityBad(q){
+  return q === "bad_quality" || q === "bad_content" || q === "insufficient";
+}
+
+function run(){
+
+let ttPosts = n("ttPosts");
+let ggPosts = n("ggPosts");
+
+let ttQ = v("ttQuality");
+let ggQ = v("ggQuality");
+
+let score = 0;
+let equal = "";
+let issues = [];
+let remarks = "";
+
+// 处理数量
+if(ttPosts === 0 && ggPosts > 0){
+  score = -2;
+  addIssue(issues, "Insufficient posts");
+}
+else if(ggPosts === 0 && ttPosts > 0){
+  score = 2;
+  addIssue(issues, "Insufficient posts");
+}
+else if(ttPosts < 10 && ggPosts >= 10){
+  score = -1;
+  addIssue(issues, "Insufficient posts");
+}
+else if(ggPosts < 10 && ttPosts >= 10){
+  score = 1;
+  addIssue(issues, "Insufficient posts");
+}
+
+// 处理极大数量差异（200 vs 2）
+else if(ttPosts >= 200 && ggPosts <= 5){
+  score = 2;
+  addIssue(issues, "Insufficient posts");
+}
+
+// 处理质量
+if(qualityBad(ttQ) && !qualityBad(ggQ)){
+  score = -1;
+  if(ttQ === "bad_quality") addIssue(issues, "Bad quality posts");
+  if(ttQ === "bad_content") addIssue(issues, "Bad content posts");
+  if(ttQ === "insufficient") addIssue(issues, "Insufficient posts");
+}
+else if(!qualityBad(ttQ) && qualityBad(ggQ)){
+  score = 1;
+  if(ggQ === "bad_quality") addIssue(issues, "Bad quality posts");
+  if(ggQ === "bad_content") addIssue(issues, "Bad content posts");
+  if(ggQ === "insufficient") addIssue(issues, "Insufficient posts");
+}
+
+// clamp to -2 to 2
+if(score > 2) score = 2;
+if(score < -2) score = -2;
+
+// equal field
+if(score === 0){
+  if(ttPosts >= 10 && ggPosts >= 10){
+    if(ttQ === "good" && ggQ === "good"){
+      equal = "Equally good";
+    }
+    else{
+      equal = "Equally bad";
+      if(ttQ === "bad_quality" || ggQ === "bad_quality") addIssue(issues, "Bad quality posts");
+      if(ttQ === "bad_content" || ggQ === "bad_content") addIssue(issues, "Bad content posts");
+      if(ttQ === "insufficient" || ggQ === "insufficient") addIssue(issues, "Insufficient posts");
+    }
+  }
+  else{
+    equal = "Equally bad";
+    addIssue(issues, "Insufficient posts");
+  }
+}
+
+// remarks
+if(score === 0 && equal === "Equally good"){
+  remarks = `Both TT and GG have a sufficient number of posts with good quality, relevant content, and clear value. Therefore, both are equally good.`;
+}
+
+else if(score === 0 && equal === "Equally bad"){
+  remarks = `Both TT and GG have issues with their posts. TT has ${ttPosts} posts, but many of them lack value, are irrelevant, or of poor quality. GG has ${ggPosts} posts but also suffers from some quality or relevance issues. Therefore, both are equally bad.`;
+}
+
+else{
+  remarks = `TT has ${ttPosts} posts while GG has ${ggPosts} posts. `;
+
+  if(score < 0){
+    if(ttPosts === 0 && ggPosts > 0){
+      remarks += "TT has no posts while GG has posts, so TT is missing post information entirely. ";
+    }
+    if(ttQ === "bad_quality"){
+      remarks += "TT's posts are of bad quality. ";
+    }
+    if(ttQ === "bad_content"){
+      remarks += "TT's posts are irrelevant or do not add value. ";
+    }
+    if(ttQ === "insufficient"){
+      remarks += "TT has fewer posts than required. ";
+    }
+
+    remarks += score === -2 ? "Therefore, TT is significantly worse than GG." : "Therefore, TT is worse than GG.";
+  }
+
+  if(score > 0){
+    if(ggPosts === 0 && ttPosts > 0){
+      remarks += "GG has no posts while TT has posts, so GG is missing post information entirely. ";
+    }
+    if(ggQ === "bad_quality"){
+      remarks += "GG's posts are of bad quality. ";
+    }
+    if(ggQ === "bad_content"){
+      remarks += "GG's posts are irrelevant or do not add value. ";
+    }
+    if(ggQ === "insufficient"){
+      remarks += "GG has fewer posts than required. ";
+    }
+
+    remarks += score === 2 ? "Therefore, TT is significantly better than GG." : "Therefore, TT is better than GG.";
+  }
+}
+
+document.getElementById("out").textContent =
+`Posts score: ${score}
+
+Equally good / Equally bad: ${equal}
+
+Issue classification: ${issues.join("; ")}
+
+Remarks:
+${remarks}`;
+}
+</script>
+
+</body>
+</html>

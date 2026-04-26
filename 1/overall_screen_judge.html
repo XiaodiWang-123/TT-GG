@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Overall Screen Judge</title>
+
+<style>
+body { font-family: Arial; background:#f5f5f5; padding:20px; }
+.box { max-width:900px; margin:auto; background:white; padding:20px; border-radius:12px; }
+label { display:block; margin-top:12px; font-weight:bold; }
+select { width:100%; padding:8px; margin-top:5px; }
+button { margin-top:18px; width:100%; padding:12px; background:black; color:white; border:0; border-radius:8px; }
+#out { margin-top:20px; background:#111; color:#0f0; padding:15px; white-space:pre-wrap; }
+</style>
+</head>
+
+<body>
+<div class="box">
+
+<h2>Overall Screen Efficiency Judge</h2>
+
+<label>TT has website?</label>
+<select id="ttWebsite"><option>yes</option><option>no</option></select>
+
+<label>GG has website?</label>
+<select id="ggWebsite"><option>yes</option><option>no</option></select>
+
+<label>TT has phone?</label>
+<select id="ttPhone"><option>yes</option><option>no</option></select>
+
+<label>GG has phone?</label>
+<select id="ggPhone"><option>yes</option><option>no</option></select>
+
+<label>TT has practical info? parking / accessibility / payment / amenities</label>
+<select id="ttPractical"><option>yes</option><option>no</option></select>
+
+<label>GG has practical info?</label>
+<select id="ggPractical"><option>yes</option><option>no</option></select>
+
+<label>TT has booking / order / ticket / product CTA?</label>
+<select id="ttCTA"><option>yes</option><option>no</option></select>
+
+<label>GG has booking / order / ticket / product CTA?</label>
+<select id="ggCTA"><option>yes</option><option>no</option></select>
+
+<label>TT content irrelevant?</label>
+<select id="ttIrrelevant"><option>no</option><option>yes</option></select>
+
+<label>TT repetitive / redundant content?</label>
+<select id="ttRepeat"><option>no</option><option>yes</option></select>
+
+<button onclick="run()">Generate Result</button>
+
+<div id="out"></div>
+
+</div>
+
+<script>
+function val(id){
+  return document.getElementById(id).value;
+}
+
+function addIssue(issues, issue){
+  if(!issues.includes(issue)){
+    issues.push(issue);
+  }
+}
+
+function run(){
+
+  let amount = 0;
+  let quality = 0;
+  let relevance = 0;
+  let issues = [];
+
+  let remarks = "Both platforms provide relevant information regarding the POI (Relevance: 0). ";
+
+  if(val("ttWebsite") === "no" && val("ggWebsite") === "yes"){
+    amount -= 1;
+    addIssue(issues, "Incomplete information");
+    remarks += "GG provides an official website link while TT does not, making GG more comprehensive (Amount: -1). ";
+  }
+
+  if(val("ttPhone") === "no" && val("ggPhone") === "yes"){
+    amount -= 1;
+    addIssue(issues, "Incomplete information");
+    remarks += "GG provides a phone number while TT does not, giving users more complete planning information (Amount: -1). ";
+  }
+
+  if(val("ttPractical") === "no" && val("ggPractical") === "yes"){
+    quality -= 1;
+    addIssue(issues, "Lack of practical details");
+    remarks += "GG includes more practical details such as parking, accessibility, payment, or amenities, making the information more useful for planning a visit (Quality: -1). ";
+  }
+
+  if(val("ttCTA") === "no" && val("ggCTA") === "yes"){
+    quality -= 1;
+    addIssue(issues, "Dead-end user journey");
+    remarks += "GG offers a clearer next step such as booking, ordering, tickets, or products, while TT provides a weaker follow-up action (Quality: -1). ";
+  }
+
+  if(val("ttIrrelevant") === "yes"){
+    relevance -= 1;
+    addIssue(issues, "Poor content relevance");
+    remarks += "TT includes content that is not clearly related to the POI, reducing the relevance of the page (Relevance: -1). ";
+  }
+
+  if(val("ttRepeat") === "yes"){
+    quality -= 1;
+    addIssue(issues, "Repetitive or redundant information");
+    remarks += "TT repeats similar information across modules, which wastes space and does not add new value for users (Quality: -1). ";
+  }
+
+  amount = Math.max(amount, -2);
+  quality = Math.max(quality, -2);
+  relevance = Math.max(relevance, -2);
+
+  let total = amount + quality + relevance;
+  let overall = 0;
+
+  if(total <= -3){
+    overall = -2;
+  } else if(total < 0){
+    overall = -1;
+  }
+
+  if(issues.length === 0){
+    issues.push("Equally good / Equally bad");
+    remarks = "Both platforms provide a similar level of information, usefulness, and relevance for the POI. The overall experience is equal.";
+  } else {
+    if(overall === -1){
+      remarks += "Overall, TT is slightly worse than GG.";
+    }
+
+    if(overall === -2){
+      remarks += "Overall, TT is significantly worse than GG.";
+    }
+  }
+
+  document.getElementById("out").textContent =
+`Amount of information: ${amount}
+Quality of information: ${quality}
+Relevance of information: ${relevance}
+Overall screen efficiency GSB: ${overall}
+
+Issue classification: ${issues.join("; ")}
+
+Remarks:
+${remarks}`;
+}
+</script>
+
+</body>
+</html>

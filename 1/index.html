@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>SBS Judge Home</title>
+
+<style>
+body {
+  margin: 0;
+  font-family: Arial;
+  background: #f3f4f6;
+}
+
+.header {
+  background: #111;
+  color: white;
+  padding: 14px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+button {
+  padding: 10px 14px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.navBtn {
+  background: white;
+  color: black;
+}
+
+.homeBtn {
+  background: #2563eb;
+  color: white;
+}
+
+.title {
+  font-size: 18px;
+  font-weight: bold;
+  margin-left: 10px;
+}
+
+.home {
+  padding: 30px;
+  max-width: 900px;
+  margin: auto;
+}
+
+.card {
+  background: white;
+  padding: 18px;
+  margin: 12px 0;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 20px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.card:hover {
+  background: #e0f2fe;
+}
+
+iframe {
+  width: 100%;
+  height: calc(100vh - 65px);
+  border: none;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+  <button class="homeBtn" onclick="goHome()">Home</button>
+  <button class="navBtn" onclick="prevPage()">Back</button>
+  <button class="navBtn" onclick="nextPage()">Next</button>
+  <div class="title" id="pageTitle">SBS Judge Home</div>
+</div>
+
+<div id="home" class="home">
+  <h1>SBS Judge Home</h1>
+
+  <div class="card" onclick="openPage(0)">1. First Screen Efficiency</div>
+  <div class="card" onclick="openPage(1)">2. Overall Scroll Efficiency</div>
+  <div class="card" onclick="openPage(2)">3. POI Name</div>
+  <div class="card" onclick="openPage(3)">4. Star Rating</div>
+  <div class="card" onclick="openPage(4)">5. Reviews</div>
+  <div class="card" onclick="openPage(5)">6. Static Images</div>
+  <div class="card" onclick="openPage(6)">7. Posts</div>
+  <div class="card" onclick="openPage(7)">8. Highlights</div>
+</div>
+
+<iframe id="viewer" style="display:none;"></iframe>
+
+<script>
+const pages = [
+  {
+    title: "First Screen Efficiency",
+    file: "first_screen_judge.html"
+  },
+  {
+    title: "Overall Scroll Efficiency",
+    file: "overall_screen_judge.html"
+  },
+  {
+    title: "POI Name",
+    file: "poi_name_judge.html"
+  },
+  {
+    title: "Star Rating",
+    file: "star_rating_judge.html"
+  },
+  {
+    title: "Reviews",
+    file: "reviews_judge.html"
+  },
+  {
+    title: "Static Images",
+    file: "static_images_judge.html"
+  },
+  {
+    title: "Posts",
+    file: "posts_judge.html"
+  },
+  {
+    title: "Highlights",
+    file: "highlights_judge.html"
+  }
+];
+
+let current = -1;
+
+function openPage(index) {
+  current = index;
+  document.getElementById("home").style.display = "none";
+  document.getElementById("viewer").style.display = "block";
+  document.getElementById("viewer").src = pages[index].file;
+  document.getElementById("pageTitle").innerText =
+    (index + 1) + ". " + pages[index].title;
+}
+
+function goHome() {
+  current = -1;
+  document.getElementById("viewer").style.display = "none";
+  document.getElementById("viewer").src = "";
+  document.getElementById("home").style.display = "block";
+  document.getElementById("pageTitle").innerText = "SBS Judge Home";
+}
+
+function nextPage() {
+  if (current === -1) {
+    openPage(0);
+    return;
+  }
+
+  if (current < pages.length - 1) {
+    openPage(current + 1);
+  } else {
+    alert("已经是最后一个了");
+  }
+}
+
+function prevPage() {
+  if (current === -1) {
+    return;
+  }
+
+  if (current > 0) {
+    openPage(current - 1);
+  } else {
+    goHome();
+  }
+}
+</script>
+
+</body>
+</html>

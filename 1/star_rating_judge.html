@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Star Rating Judge</title>
+<style>
+body { font-family: Arial; background:#f5f5f5; padding:20px; }
+.box { max-width:700px; margin:auto; background:white; padding:20px; border-radius:12px; }
+label { display:block; margin-top:12px; font-weight:bold; }
+input, select { width:100%; padding:8px; margin-top:5px; }
+button { margin-top:18px; width:100%; padding:12px; background:black; color:white; border:0; border-radius:8px; }
+#out { margin-top:20px; background:#111; color:#0f0; padding:15px; white-space:pre-wrap; }
+</style>
+</head>
+
+<body>
+<div class="box">
+
+<h2>Star Rating Judge</h2>
+
+<label>TT star rating</label>
+<input id="ttRating" placeholder="Example: 4.7">
+
+<label>GG star rating</label>
+<input id="ggRating" placeholder="Example: 4.4">
+
+<label>TT has rating?</label>
+<select id="ttHas">
+<option value="yes">Yes</option>
+<option value="no">No</option>
+</select>
+
+<label>GG has rating?</label>
+<select id="ggHas">
+<option value="yes">Yes</option>
+<option value="no">No</option>
+</select>
+
+<button onclick="run()">Generate Result</button>
+
+<div id="out"></div>
+
+</div>
+
+<script>
+function num(id){
+  return parseFloat(document.getElementById(id).value) || 0;
+}
+
+function val(id){
+  return document.getElementById(id).value;
+}
+
+function run(){
+
+let ttHas = val("ttHas");
+let ggHas = val("ggHas");
+let tt = num("ttRating");
+let gg = num("ggRating");
+
+let score = 0;
+let equal = "";
+let issue = "";
+let reason = "";
+
+// ===== 缺失 =====
+if(ttHas === "no" && ggHas === "yes"){
+  score = -2;
+  issue = "Missing rating signals";
+  reason = `TT does not provide a star rating while GG has a star rating of ${gg}. Since TT is missing the rating signal entirely, TT is significantly worse than GG.`;
+}
+
+else if(ttHas === "yes" && ggHas === "no"){
+  score = 2;
+  issue = "Missing rating signals";
+  reason = `TT has a star rating of ${tt} while GG does not provide a star rating. Since GG is missing the rating signal entirely, TT is significantly better than GG.`;
+}
+
+else if(ttHas === "no" && ggHas === "no"){
+  score = 0;
+  equal = "Equally bad";
+  issue = "Missing rating signals";  // ✅ 关键修正
+
+  reason = "Both TT and GG do not provide a star rating. Since both are missing rating signals, they are equally bad.";
+}
+
+// ===== 都有 =====
+else{
+
+let diff = Math.abs(tt - gg).toFixed(1);
+
+if(Number(diff) <= 0.3){
+  score = 0;
+  equal = "Equally good";
+  issue = "";  
+
+  reason = `TT has a star rating of ${tt} while GG has a star rating of ${gg}. Since the difference is ${diff}, the range is acceptable. Therefore, both are equally good.`;
+}
+else{
+  score = -1;
+  issue = "Inconsistent rating";
+
+  reason = `TT has a star rating of ${tt} while GG has a star rating of ${gg}. Since the difference is ${diff}, the range is not acceptable to users. Therefore, TT is slightly worse than GG.`;
+}
+
+}
+
+document.getElementById("out").textContent =
+`Star rating: ${score}
+
+Equally good / Equally bad: ${equal}
+
+Issue classification: ${issue}
+
+Reasons:
+${reason}`;
+
+}
+</script>
+
+</body>
+</html>

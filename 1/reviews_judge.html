@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Reviews Judge</title>
+
+<style>
+body { font-family: Arial; background:#f5f5f5; padding:20px; }
+.box { max-width:850px; margin:auto; background:white; padding:20px; border-radius:12px; }
+label { display:block; margin-top:12px; font-weight:bold; }
+input, select { width:100%; padding:8px; margin-top:5px; }
+button { margin-top:18px; width:100%; padding:12px; background:black; color:white; border:0; border-radius:8px; }
+#out { margin-top:20px; background:#111; color:#0f0; padding:15px; white-space:pre-wrap; }
+</style>
+</head>
+
+<body>
+<div class="box">
+
+<h2>Reviews Judge</h2>
+
+<label>TT number of reviews</label>
+<input id="ttCount" placeholder="Example: 33">
+
+<label>GG number of reviews</label>
+<input id="ggCount" placeholder="Example: 520">
+
+<label>TT review quality</label>
+<select id="ttQuality">
+<option value="good">Good / detailed reviews</option>
+<option value="shallow">Shallow but related</option>
+<option value="star_only">Only star ratings</option>
+<option value="irrelevant">Irrelevant reviews</option>
+</select>
+
+<label>GG review quality</label>
+<select id="ggQuality">
+<option value="good">Good / detailed reviews</option>
+<option value="shallow">Shallow but related</option>
+<option value="star_only">Only star ratings</option>
+<option value="irrelevant">Irrelevant reviews</option>
+</select>
+
+<button onclick="run()">Generate Result</button>
+
+<div id="out"></div>
+
+</div>
+
+<script>
+function v(id){ return document.getElementById(id).value.trim(); }
+function n(id){ return parseInt(v(id)) || 0; }
+
+function addIssue(arr, issue){
+  if(!arr.includes(issue)) arr.push(issue);
+}
+
+function qualityBad(q){
+  return q === "star_only" || q === "irrelevant";
+}
+
+function qualityText(q){
+  if(q === "good") return "detailed and useful";
+  if(q === "shallow") return "related but not very detailed";
+  if(q === "star_only") return "only star ratings with no text or images";
+  if(q === "irrelevant") return "not related to the POI";
+}
+
+function run(){
+
+let tt = n("ttCount");
+let gg = n("ggCount");
+let ttQ = v("ttQuality");
+let ggQ = v("ggQuality");
+
+let score = 0;
+let equal = "";
+let issues = [];
+let remarks = "";
+
+// count score
+if(tt === 0 && gg > 0){
+  score -= 2;
+  addIssue(issues, "Insufficient reviews quantity");
+}
+else if(gg === 0 && tt > 0){
+  score += 2;
+  addIssue(issues, "Insufficient reviews quantity");
+}
+else if(tt > 0 && gg > 0){
+  if(gg >= tt * 5){
+    score -= 1;
+    addIssue(issues, "Insufficient reviews quantity");
+  }
+  else if(tt >= gg * 5){
+    score += 1;
+    addIssue(issues, "Insufficient reviews quantity");
+  }
+}
+
+// quality score
+if(qualityBad(ttQ) && !qualityBad(ggQ)){
+  score -= 1;
+  if(ttQ === "irrelevant") addIssue(issues, "Irrelevant reviews");
+  if(ttQ === "star_only") addIssue(issues, "Bad quality reviews");
+}
+else if(!qualityBad(ttQ) && qualityBad(ggQ)){
+  score += 1;
+  if(ggQ === "irrelevant") addIssue(issues, "Irrelevant reviews");
+  if(ggQ === "star_only") addIssue(issues, "Bad quality reviews");
+}
+else if(ttQ === "shallow" && ggQ === "good"){
+  score -= 1;
+  addIssue(issues, "Bad quality reviews");
+}
+else if(ttQ === "good" && ggQ === "shallow"){
+  score += 1;
+  addIssue(issues, "Bad quality reviews");
+}
+
+// clamp
+if(score > 2) score = 2;
+if(score < -2) score = -2;
+
+// equal field
+if(score === 0){
+  if(tt === 0 && gg === 0){
+    equal = "Equally bad";
+    addIssue(issues, "Insufficient reviews quantity");
+  }
+  else if(qualityBad(ttQ) && qualityBad(ggQ)){
+    equal = "Equally bad";
+    if(ttQ === "irrelevant" || ggQ === "irrelevant") addIssue(issues, "Irrelevant reviews");
+    if(ttQ === "star_only" || ggQ === "star_only") addIssue(issues, "Bad quality reviews");
+  }
+  else{
+    equal = "Equally good";
+  }
+}
+
+// remarks
+if(score === 0 && equal === "Equally good"){
+  remarks = `Both TT and GG contain a sufficient amount of reviews (${tt} vs ${gg}), and the reviews are generally relevant and useful. Therefore, both are equally good.`;
+}
+else if(score === 0 && equal === "Equally bad"){
+  remarks = `Both TT and GG have weak review signals. TT has ${tt} reviews and GG has ${gg} reviews, and the review quality does not provide enough useful information. Therefore, both are equally bad.`;
+}
+else{
+  remarks = `TT has ${tt} reviews while GG has ${gg} reviews. `;
+
+  if(score < 0){
+    if(tt === 0 && gg > 0){
+      remarks += "TT has no reviews while GG has reviews, so TT is missing review information entirely. ";
+    } else if(gg >= tt * 5){
+      remarks += "TT has significantly fewer reviews than GG, which reduces trust and limits the amount of review information. ";
+    }
+
+    if(ttQ === "shallow"){
+      remarks += "Some of TT's reviews do not go in depth, while GG's reviews are more detailed. ";
+    }
+    if(ttQ === "star_only"){
+      remarks += "TT's reviews are mainly just star ratings with no useful text or images, which is considered bad quality. ";
+    }
+    if(ttQ === "irrelevant"){
+      remarks += "TT's reviews are not clearly related to the POI and do not add value. ";
+    }
+
+    remarks += score === -2 ? "Therefore, TT is significantly worse than GG." : "Therefore, TT is worse than GG.";
+  }
+
+  if(score > 0){
+    if(gg === 0 && tt > 0){
+      remarks += "GG has no reviews while TT has reviews, so GG is missing review information entirely. ";
+    } else if(tt >= gg * 5){
+      remarks += "TT has significantly more reviews than GG, which gives users stronger trust signals. ";
+    }
+
+    if(ggQ === "shallow"){
+      remarks += "GG's reviews do not go in depth, while TT's reviews are more detailed. ";
+    }
+    if(ggQ === "star_only"){
+      remarks += "GG's reviews are mainly just star ratings with no useful text or images, which is considered bad quality. ";
+    }
+    if(ggQ === "irrelevant"){
+      remarks += "GG's reviews are not clearly related to the POI and do not add value. ";
+    }
+
+    remarks += score === 2 ? "Therefore, TT is significantly better than GG." : "Therefore, TT is better than GG.";
+  }
+}
+
+document.getElementById("out").textContent =
+`TT number of Reviews: ${tt}
+GG number of Reviews: ${gg}
+
+Reviews: ${score}
+
+Equally good / Equally bad: ${equal}
+
+Issue classification: ${issues.join("; ")}
+
+Remarks:
+${remarks}`;
+}
+</script>
+
+</body>
+</html>

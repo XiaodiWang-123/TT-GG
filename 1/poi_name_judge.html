@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>POI Name Judge (Correct Logic)</title>
+
+<style>
+body { font-family: Arial; background:#f5f5f5; padding:20px; }
+.box { max-width:850px; margin:auto; background:white; padding:20px; border-radius:12px; }
+label { display:block; margin-top:12px; font-weight:bold; }
+input, select { width:100%; padding:8px; margin-top:5px; }
+button { margin-top:18px; width:100%; padding:12px; background:black; color:white; border:0; border-radius:8px; }
+#out { margin-top:20px; background:#111; color:#0f0; padding:15px; white-space:pre-wrap; }
+</style>
+
+</head>
+
+<body>
+<div class="box">
+
+<h2>POI Name Judge（最终版）</h2>
+
+<label>TT POI name</label>
+<input id="ttName">
+
+<label>GG POI name</label>
+<input id="ggName">
+
+<label>Factual / spelling problem</label>
+<select id="factual">
+<option value="none">None</option>
+<option value="tt">TT</option>
+<option value="gg">GG</option>
+<option value="both">Both</option>
+</select>
+
+<label>Capitalization problem</label>
+<select id="capital">
+<option value="none">None</option>
+<option value="tt">TT</option>
+<option value="gg">GG</option>
+<option value="both">Both</option>
+</select>
+
+<label>Disambiguation problem</label>
+<select id="disambig">
+<option value="none">None</option>
+<option value="tt">TT</option>
+<option value="gg">GG</option>
+<option value="both">Both</option>
+</select>
+
+<label>如果 score = 0，请选择（Equally good / bad）</label>
+<select id="equalChoice">
+<option value="">（留空）</option>
+<option value="Equally good">Equally good</option>
+<option value="Equally bad">Equally bad</option>
+</select>
+
+<button onclick="run()">Generate Result</button>
+
+<div id="out"></div>
+
+</div>
+
+<script>
+
+function v(id){ return document.getElementById(id).value }
+
+function addIssue(arr, issue){
+  if(!arr.includes(issue)) arr.push(issue)
+}
+
+function sideText(side){
+  if(side==="tt") return "TT"
+  if(side==="gg") return "GG"
+  if(side==="both") return "both TT and GG"
+}
+
+function run(){
+
+let ttProblems = 0
+let ggProblems = 0
+let issues = []
+
+function count(type, issue){
+  if(type==="tt"){ ttProblems++; addIssue(issues, issue) }
+  if(type==="gg"){ ggProblems++; addIssue(issues, issue) }
+  if(type==="both"){ ttProblems++; ggProblems++; addIssue(issues, issue) }
+}
+
+count(v("factual"), "Inaccurate - Factual data")
+count(v("capital"), "Inconsistent - Capitalization")
+count(v("disambig"), "Not Intuitive - Disambiguation Rules")
+
+let score = 0
+if(ttProblems > ggProblems) score = -1
+if(ggProblems > ttProblems) score = 1
+
+let equalField = ""
+if(score === 0){
+  equalField = v("equalChoice")
+}
+
+let remarks = ""
+
+if(score === 0){
+  if(equalField === "Equally good"){
+    remarks = "Both TT and GG have the same POI name with correct spelling and capitalization. The name is intuitive, recognizable, and visually clean. Therefore, both are equally good."
+  } else {
+    remarks = "Both TT and GG show similar issues in the POI name, making them equally bad."
+  }
+}
+else{
+
+remarks = "TT and GG display different POI names. "
+
+if(v("factual") !== "none"){
+remarks += `${sideText(v("factual"))} has a factual naming issue (Inaccurate - Factual data). `
+}
+
+if(v("capital") !== "none"){
+remarks += `${sideText(v("capital"))} has capitalization issues (Inconsistent - Capitalization). `
+}
+
+if(v("disambig") !== "none"){
+remarks += `${sideText(v("disambig"))} is not intuitive and may need disambiguation (Not Intuitive - Disambiguation Rules). `
+}
+
+if(score === -1){
+remarks += "Therefore, TT is worse than GG."
+}
+if(score === 1){
+remarks += "Therefore, TT is better than GG."
+}
+}
+
+// ===== OUTPUT =====
+document.getElementById("out").textContent =
+`POI Name score: ${score}
+
+Equally good / Equally bad: ${equalField}
+
+Issue classification: ${issues.join("; ")}
+
+Remarks:
+${remarks}`
+
+}
+
+</script>
+
+</body>
+</html>
