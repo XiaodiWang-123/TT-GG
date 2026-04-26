@@ -134,19 +134,35 @@ const pages = [
 
 let current = -1;
 
+function getBasePath() {
+  let path = window.location.pathname;
+
+  if (path.endsWith("/")) {
+    return path;
+  }
+
+  return path.substring(0, path.lastIndexOf("/") + 1);
+}
+
 function openPage(index) {
   current = index;
+
   document.getElementById("home").style.display = "none";
   document.getElementById("viewer").style.display = "block";
-  document.getElementById("viewer").src = pages[index].file;
+
+  const basePath = getBasePath();
+  document.getElementById("viewer").src = basePath + pages[index].file;
+
   document.getElementById("pageTitle").innerText =
     (index + 1) + ". " + pages[index].title;
 }
 
 function goHome() {
   current = -1;
+
   document.getElementById("viewer").style.display = "none";
   document.getElementById("viewer").src = "";
+
   document.getElementById("home").style.display = "block";
   document.getElementById("pageTitle").innerText = "SBS Judge Home";
 }
