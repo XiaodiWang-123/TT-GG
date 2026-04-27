@@ -25,6 +25,18 @@ button { margin-top:18px; width:100%; padding:12px; background:black; color:whit
 <label>GG number of reviews</label>
 <input id="ggCount" placeholder="Example: 520">
 
+<label>TT review content visibility</label>
+<select id="ttVisible">
+<option value="visible">Can see specific review content</option>
+<option value="count_only">Only review count visible</option>
+</select>
+
+<label>GG review content visibility</label>
+<select id="ggVisible">
+<option value="visible">Can see specific review content</option>
+<option value="count_only">Only review count visible</option>
+</select>
+
 <label>TT review quality</label>
 <select id="ttQuality">
 <option value="good">Good / detailed reviews</option>
@@ -39,6 +51,7 @@ button { margin-top:18px; width:100%; padding:12px; background:black; color:whit
 <option value="shallow">Shallow but related</option>
 <option value="star_only">Only star ratings</option>
 <option value="irrelevant">Irrelevant reviews</option>
+<option value="unknown">Cannot see specific review content</option>
 </select>
 
 <button onclick="run()">Generate Result</button>
@@ -59,17 +72,14 @@ function qualityBad(q){
   return q === "star_only" || q === "irrelevant";
 }
 
-function qualityText(q){
-  if(q === "good") return "detailed and useful";
-  if(q === "shallow") return "related but not very detailed";
-  if(q === "star_only") return "only star ratings with no text or images";
-  if(q === "irrelevant") return "not related to the POI";
-}
-
 function run(){
 
 let tt = n("ttCount");
 let gg = n("ggCount");
+
+let ttVisible = v("ttVisible");
+let ggVisible = v("ggVisible");
+
 let ttQ = v("ttQuality");
 let ggQ = v("ggQuality");
 
@@ -78,7 +88,7 @@ let equal = "";
 let issues = [];
 let remarks = "";
 
-// count score
+// ===== Quantity score =====
 if(tt === 0 && gg > 0){
   score -= 2;
   addIssue(issues, "Insufficient reviews quantity");
@@ -88,7 +98,15 @@ else if(gg === 0 && tt > 0){
   addIssue(issues, "Insufficient reviews quantity");
 }
 else if(tt > 0 && gg > 0){
-  if(gg >= tt * 5){
+  if(gg >= tt * 10){
+    score -= 2;
+    addIssue(issues, "Insufficient reviews quantity");
+  }
+  else if(tt >= gg * 10){
+    score += 2;
+    addIssue(issues, "Insufficient reviews quantity");
+  }
+  else if(gg >= tt * 5){
     score -= 1;
     addIssue(issues, "Insufficient reviews quantity");
   }
@@ -98,8 +116,19 @@ else if(tt > 0 && gg > 0){
   }
 }
 
-// quality score
-if(qualityBad(ttQ) && !qualityBad(ggQ)){
+// ===== Visibility score =====
+// 如果一边只能看到 review 数量，看不到具体 review 内容，质量价值会弱一点
+if(ttVisible === "count_only" && ggVisible === "visible"){
+  score -= 1;
+  addIssue(issues, "Bad quality reviews");
+}
+else if(ggVisible === "count_only" && ttVisible === "visible"){
+  score += 1;
+  addIssue(issues, "Bad quality reviews");
+}
+
+// ===== Quality score =====
+if(qualityBad(ttQ) && !qualityBad(ggQ) && ggQ !== "unknown"){
   score -= 1;
   if(ttQ === "irrelevant") addIssue(issues, "Irrelevant reviews");
   if(ttQ === "star_only") addIssue(issues, "Bad quality reviews");
@@ -118,11 +147,20 @@ else if(ttQ === "good" && ggQ === "shallow"){
   addIssue(issues, "Bad quality reviews");
 }
 
+// GG unknown 不自动算成 bad quality，只在 remarks 里说明
+if(ggQ === "unknown" || ggVisible === "count_only"){
+  addIssue(issues, "Bad quality reviews");
+}
+
+if(ttQ === "unknown" || ttVisible === "count_only"){
+  addIssue(issues, "Bad quality reviews");
+}
+
 // clamp
 if(score > 2) score = 2;
 if(score < -2) score = -2;
 
-// equal field
+// ===== Equal field =====
 if(score === 0){
   if(tt === 0 && gg === 0){
     equal = "Equally bad";
@@ -133,33 +171,48 @@ if(score === 0){
     if(ttQ === "irrelevant" || ggQ === "irrelevant") addIssue(issues, "Irrelevant reviews");
     if(ttQ === "star_only" || ggQ === "star_only") addIssue(issues, "Bad quality reviews");
   }
+  else if(ttVisible === "count_only" && ggVisible === "count_only"){
+    equal = "Equally bad";
+    addIssue(issues, "Bad quality reviews");
+  }
   else{
     equal = "Equally good";
+    issues = [];
   }
 }
 
-// remarks
+// ===== Remarks =====
 if(score === 0 && equal === "Equally good"){
-  remarks = `Both TT and GG contain a sufficient amount of reviews (${tt} vs ${gg}), and the reviews are generally relevant and useful. Therefore, both are equally good.`;
+  remarks = `Both TT and GG contain a sufficient amount of reviews (${tt} vs ${gg}), and the visible review content is generally relevant and useful. Therefore, both are equally good.`;
 }
+
 else if(score === 0 && equal === "Equally bad"){
-  remarks = `Both TT and GG have weak review signals. TT has ${tt} reviews and GG has ${gg} reviews, and the review quality does not provide enough useful information. Therefore, both are equally bad.`;
+  remarks = `Both TT and GG have weak review signals. TT has ${tt} reviews and GG has ${gg} reviews, but the review content is not useful enough, not visible enough, or mainly lacks meaningful detail. Therefore, both are equally bad.`;
 }
+
 else{
   remarks = `TT has ${tt} reviews while GG has ${gg} reviews. `;
 
   if(score < 0){
     if(tt === 0 && gg > 0){
       remarks += "TT has no reviews while GG has reviews, so TT is missing review information entirely. ";
-    } else if(gg >= tt * 5){
-      remarks += "TT has significantly fewer reviews than GG, which reduces trust and limits the amount of review information. ";
+    }
+    else if(gg >= tt * 10){
+      remarks += "GG has a significantly larger review count than TT, giving users much stronger review quantity signals. ";
+    }
+    else if(gg >= tt * 5){
+      remarks += "TT has fewer reviews than GG, which reduces trust and limits the amount of review information. ";
+    }
+
+    if(ttVisible === "count_only"){
+      remarks += "TT only shows the review count, but the specific review content is not visible, which limits the usefulness of the reviews. ";
     }
 
     if(ttQ === "shallow"){
       remarks += "Some of TT's reviews do not go in depth, while GG's reviews are more detailed. ";
     }
     if(ttQ === "star_only"){
-      remarks += "TT's reviews are mainly just star ratings with no useful text or images, which is considered bad quality. ";
+      remarks += "Most of TT's reviews are only star ratings without useful text or images, which is considered bad quality reviews. ";
     }
     if(ttQ === "irrelevant"){
       remarks += "TT's reviews are not clearly related to the POI and do not add value. ";
@@ -171,15 +224,23 @@ else{
   if(score > 0){
     if(gg === 0 && tt > 0){
       remarks += "GG has no reviews while TT has reviews, so GG is missing review information entirely. ";
-    } else if(tt >= gg * 5){
-      remarks += "TT has significantly more reviews than GG, which gives users stronger trust signals. ";
+    }
+    else if(tt >= gg * 10){
+      remarks += "TT has a significantly larger review count than GG, giving users much stronger review quantity signals. ";
+    }
+    else if(tt >= gg * 5){
+      remarks += "TT has more reviews than GG, which gives users stronger trust signals. ";
+    }
+
+    if(ggVisible === "count_only" || ggQ === "unknown"){
+      remarks += "GG only shows the review count, but the specific review content is not visible, which limits the usefulness of the reviews. ";
     }
 
     if(ggQ === "shallow"){
       remarks += "GG's reviews do not go in depth, while TT's reviews are more detailed. ";
     }
     if(ggQ === "star_only"){
-      remarks += "GG's reviews are mainly just star ratings with no useful text or images, which is considered bad quality. ";
+      remarks += "GG's reviews are mainly just star ratings with no useful text or images, which is considered bad quality reviews. ";
     }
     if(ggQ === "irrelevant"){
       remarks += "GG's reviews are not clearly related to the POI and do not add value. ";

@@ -6,7 +6,7 @@
 
 <style>
 body { font-family: Arial; background:#f5f5f5; padding:20px; }
-.box { max-width:900px; margin:auto; background:white; padding:20px; border-radius:12px; }
+.box { max-width:950px; margin:auto; background:white; padding:20px; border-radius:12px; }
 label { display:block; margin-top:12px; font-weight:bold; }
 select { width:100%; padding:8px; margin-top:5px; }
 button { margin-top:18px; width:100%; padding:12px; background:black; color:white; border:0; border-radius:8px; }
@@ -34,7 +34,7 @@ button { margin-top:18px; width:100%; padding:12px; background:black; color:whit
 <label>TT has practical info? parking / accessibility / payment / amenities</label>
 <select id="ttPractical"><option>yes</option><option>no</option></select>
 
-<label>GG has practical info?</label>
+<label>GG has practical info? parking / accessibility / payment / amenities</label>
 <select id="ggPractical"><option>yes</option><option>no</option></select>
 
 <label>TT has booking / order / ticket / product CTA?</label>
@@ -46,8 +46,14 @@ button { margin-top:18px; width:100%; padding:12px; background:black; color:whit
 <label>TT content irrelevant?</label>
 <select id="ttIrrelevant"><option>no</option><option>yes</option></select>
 
+<label>GG content irrelevant?</label>
+<select id="ggIrrelevant"><option>no</option><option>yes</option></select>
+
 <label>TT repetitive / redundant content?</label>
 <select id="ttRepeat"><option>no</option><option>yes</option></select>
+
+<label>GG repetitive / redundant content?</label>
+<select id="ggRepeat"><option>no</option><option>yes</option></select>
 
 <button onclick="run()">Generate Result</button>
 
@@ -66,82 +72,146 @@ function addIssue(issues, issue){
   }
 }
 
+function clamp(x){
+  if(x > 2) return 2;
+  if(x < -2) return -2;
+  return x;
+}
+
 function run(){
 
   let amount = 0;
   let quality = 0;
   let relevance = 0;
   let issues = [];
+  let parts = [];
 
-  let remarks = "Both platforms provide relevant information regarding the POI (Relevance: 0). ";
-
+  // ===== Amount: website / phone / basic depth =====
   if(val("ttWebsite") === "no" && val("ggWebsite") === "yes"){
     amount -= 1;
     addIssue(issues, "Incomplete information");
-    remarks += "GG provides an official website link while TT does not, making GG more comprehensive (Amount: -1). ";
+    parts.push("GG provides an official website link while TT does not, making GG more complete for planning (amount -1).");
+  }
+
+  if(val("ttWebsite") === "yes" && val("ggWebsite") === "no"){
+    amount += 1;
+    addIssue(issues, "Incomplete information");
+    parts.push("TT provides an official website link while GG does not, making TT more complete for planning (amount 1).");
   }
 
   if(val("ttPhone") === "no" && val("ggPhone") === "yes"){
     amount -= 1;
     addIssue(issues, "Incomplete information");
-    remarks += "GG provides a phone number while TT does not, giving users more complete planning information (Amount: -1). ";
+    parts.push("GG provides a phone number while TT does not, giving GG more complete contact information (amount -1).");
   }
 
+  if(val("ttPhone") === "yes" && val("ggPhone") === "no"){
+    amount += 1;
+    addIssue(issues, "Incomplete information");
+    parts.push("TT provides a phone number while GG does not, giving TT more complete contact information (amount 1).");
+  }
+
+  // ===== Quality: practical details / CTA / repetition =====
   if(val("ttPractical") === "no" && val("ggPractical") === "yes"){
     quality -= 1;
     addIssue(issues, "Lack of practical details");
-    remarks += "GG includes more practical details such as parking, accessibility, payment, or amenities, making the information more useful for planning a visit (Quality: -1). ";
+    parts.push("GG includes practical details such as parking, accessibility, payment, or amenities, while TT lacks these details (quality -1).");
+  }
+
+  if(val("ttPractical") === "yes" && val("ggPractical") === "no"){
+    quality += 1;
+    addIssue(issues, "Lack of practical details");
+    parts.push("TT includes practical details such as parking, accessibility, payment, or amenities, while GG lacks these details (quality 1).");
   }
 
   if(val("ttCTA") === "no" && val("ggCTA") === "yes"){
     quality -= 1;
     addIssue(issues, "Dead-end user journey");
-    remarks += "GG offers a clearer next step such as booking, ordering, tickets, or products, while TT provides a weaker follow-up action (Quality: -1). ";
+    parts.push("GG offers a clear next step such as booking, ordering, tickets, or products, while TT does not provide a comparable CTA (quality -1).");
   }
 
-  if(val("ttIrrelevant") === "yes"){
-    relevance -= 1;
-    addIssue(issues, "Poor content relevance");
-    remarks += "TT includes content that is not clearly related to the POI, reducing the relevance of the page (Relevance: -1). ";
+  if(val("ttCTA") === "yes" && val("ggCTA") === "no"){
+    quality += 1;
+    addIssue(issues, "Dead-end user journey");
+    parts.push("TT offers a clear next step such as booking, ordering, tickets, or products, while GG does not provide a comparable CTA (quality 1).");
   }
 
-  if(val("ttRepeat") === "yes"){
+  if(val("ttRepeat") === "yes" && val("ggRepeat") === "no"){
     quality -= 1;
     addIssue(issues, "Repetitive or redundant information");
-    remarks += "TT repeats similar information across modules, which wastes space and does not add new value for users (Quality: -1). ";
+    parts.push("TT repeats similar information across modules, which wastes space and adds less value than GG (quality -1).");
   }
 
-  amount = Math.max(amount, -2);
-  quality = Math.max(quality, -2);
-  relevance = Math.max(relevance, -2);
+  if(val("ggRepeat") === "yes" && val("ttRepeat") === "no"){
+    quality += 1;
+    addIssue(issues, "Repetitive or redundant information");
+    parts.push("GG repeats similar information across modules, which wastes space and adds less value than TT (quality 1).");
+  }
 
+  // ===== Relevance =====
+  if(val("ttIrrelevant") === "yes" && val("ggIrrelevant") === "no"){
+    relevance -= 1;
+    addIssue(issues, "Poor content relevance");
+    parts.push("TT includes content that is not clearly related to the POI, while GG provides more relevant content (relevance -1).");
+  }
+
+  if(val("ggIrrelevant") === "yes" && val("ttIrrelevant") === "no"){
+    relevance += 1;
+    addIssue(issues, "Poor content relevance");
+    parts.push("GG includes content that is not clearly related to the POI, while TT provides more relevant content (relevance 1).");
+  }
+
+  if(val("ttIrrelevant") === "no" && val("ggIrrelevant") === "no"){
+    parts.push("Both platforms provide information that is relevant to the POI (relevance 0).");
+  }
+
+  if(val("ttIrrelevant") === "yes" && val("ggIrrelevant") === "yes"){
+    addIssue(issues, "Poor content relevance");
+    parts.push("Both platforms contain some irrelevant content, so neither side has a clear relevance advantage.");
+  }
+
+  // clamp dimensions
+  amount = clamp(amount);
+  quality = clamp(quality);
+  relevance = clamp(relevance);
+
+  // ===== Overall GSB =====
   let total = amount + quality + relevance;
   let overall = 0;
 
-  if(total <= -3){
-    overall = -2;
-  } else if(total < 0){
-    overall = -1;
-  }
+  if(total >= 3) overall = 2;
+  else if(total > 0) overall = 1;
+  else if(total <= -3) overall = -2;
+  else if(total < 0) overall = -1;
 
-  if(issues.length === 0){
-    issues.push("Equally good / Equally bad");
-    remarks = "Both platforms provide a similar level of information, usefulness, and relevance for the POI. The overall experience is equal.";
-  } else {
-    if(overall === -1){
-      remarks += "Overall, TT is slightly worse than GG.";
-    }
-
-    if(overall === -2){
-      remarks += "Overall, TT is significantly worse than GG.";
+  // ===== Equal field =====
+  let equal = "";
+  if(overall === 0){
+    if(issues.length === 0){
+      equal = "Equally good";
+    } else {
+      equal = "Equally bad";
     }
   }
+
+  // ===== Remarks =====
+  let ending = "";
+  if(overall === 2) ending = "Therefore, TT is significantly better than GG.";
+  else if(overall === 1) ending = "Therefore, TT is slightly better than GG.";
+  else if(overall === -1) ending = "Therefore, TT is slightly worse than GG.";
+  else if(overall === -2) ending = "Therefore, TT is significantly worse than GG.";
+  else if(equal === "Equally good") ending = "Therefore, both are equally good.";
+  else ending = "Therefore, both are equally bad.";
+
+  let remarks = parts.join(" ") + " " + ending;
 
   document.getElementById("out").textContent =
 `Amount of information: ${amount}
 Quality of information: ${quality}
 Relevance of information: ${relevance}
 Overall screen efficiency GSB: ${overall}
+
+Equally good / Equally bad: ${equal}
 
 Issue classification: ${issues.join("; ")}
 

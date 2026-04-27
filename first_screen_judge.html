@@ -2,147 +2,208 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>First Screen Judge (Multi Issue)</title>
+<title>First Screen Judge</title>
 
 <style>
 body { font-family: Arial; padding:20px; background:#f5f5f5;}
-.box { background:white; padding:20px; border-radius:10px; max-width:900px; margin:auto;}
+.box { background:white; padding:20px; border-radius:10px; max-width:950px; margin:auto;}
 label { display:block; margin-top:12px; font-weight:bold;}
 input, select { width:100%; padding:8px; margin-top:5px;}
-button { margin-top:15px; padding:12px; width:100%; background:black; color:white; border:none;}
+button { margin-top:15px; padding:12px; width:100%; background:black; color:white; border:none; border-radius:8px;}
 #out { margin-top:20px; background:#111; color:#0f0; padding:15px; white-space:pre-wrap;}
 </style>
-
 </head>
 
 <body>
 
 <div class="box">
 
-<h2>First Screen（支持多问题）</h2>
+<h2>First Screen Judge</h2>
 
-<label>TT review 数量</label>
+<label>TT review count</label>
 <input id="ttReview">
 
-<label>GG review 数量</label>
+<label>GG review count</label>
 <input id="ggReview">
 
-<label>TT 有 star rating 吗</label>
+<label>TT has star rating?</label>
 <select id="ttRating"><option>yes</option><option>no</option></select>
 
-<label>GG 有 star rating 吗</label>
+<label>GG has star rating?</label>
 <select id="ggRating"><option>yes</option><option>no</option></select>
 
-<label>TT 是否缺少 opening hours / category / 地址</label>
+<label>TT missing core info? header image / opening hours / category / location</label>
 <select id="ttCore"><option>no</option><option>yes</option></select>
 
-<label>TT 是否缺少 menu / wait time / useful feature</label>
-<select id="ttInfo"><option>no</option><option>yes</option></select>
+<label>GG missing core info? header image / opening hours / category / location</label>
+<select id="ggCore"><option>no</option><option>yes</option></select>
 
-<label>TT 图片是否无关 / 模糊 / logo</label>
+<label>TT has useful first-screen info? menu / wait time / useful feature</label>
+<select id="ttInfo"><option>yes</option><option>no</option></select>
+
+<label>GG has useful first-screen info? menu / wait time / useful feature</label>
+<select id="ggInfo"><option>yes</option><option>no</option></select>
+
+<label>TT visual is irrelevant / blurry / logo-only / poor?</label>
 <select id="ttImg"><option>no</option><option>yes</option></select>
 
-<button onclick="run()">生成结果</button>
+<label>GG visual is irrelevant / blurry / poor?</label>
+<select id="ggImg"><option>no</option><option>yes</option></select>
+
+<button onclick="run()">Generate Result</button>
 
 <div id="out"></div>
 
 </div>
 
 <script>
-
 function addIssue(arr, item){
-  if(!arr.includes(item)){
-    arr.push(item)
-  }
+  if(!arr.includes(item)) arr.push(item);
 }
 
 function run(){
 
-let ttR = parseInt(document.getElementById("ttReview").value||0)
-let ggR = parseInt(document.getElementById("ggReview").value||0)
+let ttR = parseInt(document.getElementById("ttReview").value || 0);
+let ggR = parseInt(document.getElementById("ggReview").value || 0);
 
-let ttRating = document.getElementById("ttRating").value
-let ggRating = document.getElementById("ggRating").value
+let ttRating = document.getElementById("ttRating").value;
+let ggRating = document.getElementById("ggRating").value;
 
-let ttCore = document.getElementById("ttCore").value
-let ttInfo = document.getElementById("ttInfo").value
-let ttImg = document.getElementById("ttImg").value
+let ttCore = document.getElementById("ttCore").value;
+let ggCore = document.getElementById("ggCore").value;
 
-let amount = 0
-let quality = 0
-let relevance = 0
-let issues = []
-let missing = []
+let ttInfo = document.getElementById("ttInfo").value;
+let ggInfo = document.getElementById("ggInfo").value;
 
-// ===== Amount =====
-if(ggR > ttR * 5){
-  amount = -1
-  addIssue(issues, "Missing trust signals")
-  missing.push("review count")
+let ttImg = document.getElementById("ttImg").value;
+let ggImg = document.getElementById("ggImg").value;
+
+let amount = 0;
+let quality = 0;
+let relevance = 0;
+
+let issues = [];
+let reasonParts = [];
+
+// ===== Amount: review quantity + useful info amount =====
+if(ttR === 0 && ggR > 0){
+  amount -= 2;
+  addIssue(issues, "Missing trust signals");
+  reasonParts.push(`TT has no reviews while GG has ${ggR} reviews, so TT lacks review information entirely (amount -2).`);
+}
+else if(ggR === 0 && ttR > 0){
+  amount += 2;
+  addIssue(issues, "Missing trust signals");
+  reasonParts.push(`TT has ${ttR} reviews while GG has no reviews, so TT provides much stronger review information (amount 2).`);
+}
+else if(ttR > 0 && ggR > 0){
+  if(ggR >= ttR * 10){
+    amount -= 2;
+    addIssue(issues, "Missing trust signals");
+    reasonParts.push(`GG has significantly more reviews than TT (${ggR} vs ${ttR}), creating a major difference in information depth (amount -2).`);
+  }
+  else if(ttR >= ggR * 10){
+    amount += 2;
+    addIssue(issues, "Missing trust signals");
+    reasonParts.push(`TT has significantly more reviews than GG (${ttR} vs ${ggR}), creating a major difference in information depth (amount 2).`);
+  }
+  else if(ggR >= ttR * 5){
+    amount -= 1;
+    addIssue(issues, "Missing trust signals");
+    reasonParts.push(`GG has noticeably more reviews than TT (${ggR} vs ${ttR}), which gives GG more information depth (amount -1).`);
+  }
+  else if(ttR >= ggR * 5){
+    amount += 1;
+    addIssue(issues, "Missing trust signals");
+    reasonParts.push(`TT has noticeably more reviews than GG (${ttR} vs ${ggR}), which gives TT more information depth (amount 1).`);
+  }
 }
 
-// ===== Quality =====
-if(ttRating==="no" && ggRating==="yes"){
-  quality = -1
-  addIssue(issues, "Missing trust signals")
-  missing.push("star rating")
+if(ttInfo === "no" && ggInfo === "yes"){
+  amount -= 1;
+  reasonParts.push("GG provides useful first-screen information such as menu, wait time, or other helpful features that TT does not show (amount -1).");
+}
+else if(ttInfo === "yes" && ggInfo === "no"){
+  amount += 1;
+  reasonParts.push("TT provides useful first-screen information such as menu, wait time, or other helpful features that GG does not show (amount 1).");
 }
 
-if(ttInfo==="yes"){
-  quality = -1
+// ===== Quality: rating + useful quality =====
+if(ttRating === "no" && ggRating === "yes"){
+  quality -= 2;
+  addIssue(issues, "Missing trust signals");
+  reasonParts.push("TT does not provide a star rating while GG does, so TT is missing a key trust signal (quality -2).");
+}
+else if(ttRating === "yes" && ggRating === "no"){
+  quality += 2;
+  addIssue(issues, "Missing trust signals");
+  reasonParts.push("TT provides a star rating while GG does not, so TT has a stronger trust signal (quality 2).");
+}
+else if(ttRating === "no" && ggRating === "no"){
+  addIssue(issues, "Missing trust signals");
+  reasonParts.push("Both TT and GG are missing star rating signals.");
 }
 
-// ===== Relevance =====
-if(ttImg==="yes"){
-  relevance = -1
-  addIssue(issues, "Uninformative visuals")
-  missing.push("irrelevant image")
+if(ttCore === "yes" && ggCore === "no"){
+  quality -= 1;
+  addIssue(issues, "Missing core information");
+  reasonParts.push("TT is missing core first-screen information such as header image, opening hours, category, or location, while GG provides it (quality -1).");
+}
+else if(ggCore === "yes" && ttCore === "no"){
+  quality += 1;
+  addIssue(issues, "Missing core information");
+  reasonParts.push("GG is missing core first-screen information such as header image, opening hours, category, or location, while TT provides it (quality 1).");
+}
+else if(ttCore === "yes" && ggCore === "yes"){
+  addIssue(issues, "Missing core information");
+  reasonParts.push("Both TT and GG are missing some core first-screen information.");
 }
 
-// ===== Core info =====
-if(ttCore==="yes"){
-  addIssue(issues, "Missing core information")
-  missing.push("opening hours / category / location")
+// ===== Relevance: visual relevance =====
+if(ttImg === "yes" && ggImg === "no"){
+  relevance -= 1;
+  addIssue(issues, "Uninformative visuals");
+  reasonParts.push("TT’s main visual is irrelevant, blurry, poorly cropped, logo-only, or otherwise uninformative, while GG’s visual is more useful (relevance -1).");
 }
-
-// ===== Overall =====
-let total = amount + quality + relevance
-let overall = 0
-if(total < 0) overall = -1
-
-// ===== Reason =====
-let reason = "Based on the first screen, both TT and GG provide basic information about the place. "
-
-if(amount !== 0){
-reason += `However, TT has significantly fewer reviews compared to GG (${ttR} vs ${ggR}), which reduces trust and limits information depth (amount -1). `
+else if(ggImg === "yes" && ttImg === "no"){
+  relevance += 1;
+  addIssue(issues, "Uninformative visuals");
+  reasonParts.push("GG’s main visual is irrelevant, blurry, poorly cropped, or otherwise uninformative, while TT’s visual is more useful (relevance 1).");
 }
-
-if(quality !== 0){
-reason += "GG provides more useful and actionable information such as menu, wait time or additional features, making the information more helpful (quality -1). "
-}
-
-if(relevance !== 0){
-reason += "TT displays visuals that are not relevant to the place, which reduces content relevance (relevance -1). "
+else if(ttImg === "yes" && ggImg === "yes"){
+  addIssue(issues, "Uninformative visuals");
+  reasonParts.push("Both TT and GG have weak or uninformative visuals.");
 }
 else{
-reason += "Both platforms display relevant content (relevance 0). "
+  reasonParts.push("Both platforms display visuals that are relevant enough to the POI (relevance 0).");
 }
 
-// 多个 issue 输出
-if(issues.length > 0){
-reason += `TT also has the following issues: ${issues.join(", ")} (${missing.join(", ")}). `
-}
+// Clamp dimensions
+amount = Math.max(-2, Math.min(2, amount));
+quality = Math.max(-2, Math.min(2, quality));
+relevance = Math.max(-2, Math.min(2, relevance));
 
-if(overall === -1){
-reason += "Therefore, TT is slightly worse than GG."
-}
-else{
-reason += "Therefore, TT and GG are similar."
-}
+// ===== Overall GSB =====
+let total = amount + quality + relevance;
+let overall = 0;
 
-// ===== OUTPUT =====
-let out = `
-Amount of information: ${amount}
+if(total >= 3) overall = 2;
+else if(total > 0) overall = 1;
+else if(total <= -3) overall = -2;
+else if(total < 0) overall = -1;
+
+// ===== Reason ending =====
+let ending = "";
+if(overall === 2) ending = "Therefore, TT is significantly better than GG.";
+else if(overall === 1) ending = "Therefore, TT is slightly better than GG.";
+else if(overall === -1) ending = "Therefore, TT is slightly worse than GG.";
+else if(overall === -2) ending = "Therefore, TT is significantly worse than GG.";
+else ending = "Therefore, TT and GG are similar overall on the first screen.";
+
+let reason = "Based on the first screen, " + reasonParts.join(" ") + " " + ending;
+
+document.getElementById("out").textContent =
+`Amount of information: ${amount}
 Quality of information: ${quality}
 Relevance of information: ${relevance}
 First screen efficiency GSB: ${overall}
@@ -150,13 +211,8 @@ First screen efficiency GSB: ${overall}
 Issue classification: ${issues.join("; ")}
 
 Reason:
-${reason}
-`
-
-document.getElementById("out").textContent = out
-
+${reason}`;
 }
-
 </script>
 
 </body>
